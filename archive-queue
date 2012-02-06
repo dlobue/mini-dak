@@ -51,7 +51,6 @@ verify_size ()
 verify_gpg_signature ()
 {
   local changes_file=$1
-  local archive_file=$2
   local verify_result="`gpg $archive_keyrings --no-tty --status-fd=2 --verify $changes_file 2>&1`"
 
   if wrong=`echo "$verify_result" | grep '^\[GNUPG:\] BADSIG '`; then
@@ -59,7 +58,7 @@ verify_gpg_signature ()
   elif good=`echo "$verify_result" | grep '^\[GNUPG:\] GOODSIG '`; then
     local signed_by="`echo "$good" | cut -d\  -f4-`"
     changes_strip < $changes_file \
-      | formail -a"Signed-By: $signed_by" > $archive_file
+      | formail -a"Signed-By: $signed_by" > $changes_file
     return 0
   else
     return 1
@@ -68,8 +67,8 @@ verify_gpg_signature ()
 
 verify_dpkg_signature ()
 {
-  local archive_file=$1
-  local files=`fetch_secure_files < $archive_file | grep '\.u\?deb$'`
+  local changes_file=$1
+  local files=`fetch_secure_files < $changes_file | grep '\.u\?deb$'`
 
   if [ "$use_dpkg_sig" != yes ]; then
     return 0
@@ -90,14 +89,14 @@ verify_dpkg_signature ()
 
 verify_md5sums ()
 {
-  local archive_file=$1
+  local changes_file=$1
   local md5sum=md5sum.textutils
 
   if ! which $md5sum >/dev/null; then
     md5sum=md5sum
   fi
 
-  if fetch_md5sums < $archive_file | $md5sum -c >& /dev/null; then
+  if fetch_md5sums < $changes_file | $md5sum -c >& /dev/null; then
     return 0
   else
     return 1
@@ -106,8 +105,8 @@ verify_md5sums ()
 
 verify_suite ()
 {
-  local archive_file=$1
-  local target_suite=`fetch_field "Distribution" < $archive_file`
+  local changes_file=$1
+  local target_suite=`fetch_field "Distribution" < $changes_file`
   local c_target_suite=`canonic_suite $target_suite`
 
   for suite in $suite_list; do
@@ -121,9 +120,9 @@ verify_suite ()
 
 verify_arch ()
 {
-  local archive_file=$1
-  local target_arches=`fetch_field "Architecture" < $archive_file`
-  local suite=`fetch_field "Distribution" < $archive_file`
+  local changes_file=$1
+  local target_arches=`fetch_field "Architecture" < $changes_file`
+  local suite=`fetch_field "Distribution" < $changes_file`
 
   for arch in $target_arches; do
     if ! valid_arch $suite $arch; then
@@ -136,8 +135,8 @@ verify_arch ()
 
 verify_multiarch_changes ()
 {
-  local archive_file=$1
-  local target_arches=`fetch_field "Architecture" < $archive_file`
+  local changes_file=$1
+  local target_arches=`fetch_field "Architecture" < $changes_file`
   local multiarch=`filter_real_arches $target_arches | wc -w`
 
   if [ $multiarch -gt 1 ]; then
@@ -157,20 +156,19 @@ verify_multiarch_changes ()
 queue_accepted ()
 {
   local changes_file=$1
-  local archive_file=$2
-  local signer=$3
-  local files=`fetch_secure_files < $archive_file`
-  local files_install="$files $changes_file $archive_file"
+  local signer=$2
+  local files=`fetch_secure_files < $changes_file`
+  local files_install="$files $changes_file"
 
   files_owner_perms $files_install
 
   if mv $files_install $accepted_dir; then
-    log queue "mv_accepted_success ${archive_file##*/}"
+    log queue "mv_accepted_success ${changes_file##*/}"
     notice_accepted $changes_file "$files" "$signer"
     return 0
   else
     script_error "queue_accepted" "$?"
-    log queue "mv_accepted_failed ${archive_file##*/}"
+    log queue "mv_accepted_failed ${changes_file##*/}"
     return 1
   fi
 }
@@ -179,25 +177,24 @@ queue_rejected ()
 {
   local outcome=$1
   local changes_file=$2
-  local archive_file=$3
-  local signer=$4
+  local signer=$3
   local files=
 
   mkdir -p $rejected_daily_dir
 
   if [ "$signer" ]; then
-    files="`fetch_secure_files < $archive_file` $changes_file $archive_file"
+    files="`fetch_secure_files < $changes_file` $changes_file"
   else
     files=$changes_file
   fi
 
   if mv $files $rejected_daily_dir; then
-    log queue "mv_rejected_success ${archive_file##*/}"
+    log queue "mv_rejected_success ${changes_file##*/}"
     notice_rejected $changes_file "$outcome" "$signer"
     return 0
   else
     script_error "queue_rejected" "$?"
-    log queue "mv_rejected_failed ${archive_file##*/}"
+    log queue "mv_rejected_failed ${changes_file##*/}"
     return 1
   fi
 }
@@ -258,7 +255,6 @@ for changes_file in *.changes; do
     mv -f $changes_file $unchecked_dir/$changes_file
 
     changes_file=$unchecked_dir/$changes_file
-    archive_file=$unchecked_dir/$(basename $changes_file changes)archive
 
     if ! verify_symlink_attack $changes_file; then
       queue_rejected "error-symlink-attack" $changes_file
@@ -270,50 +266,50 @@ for changes_file in *.changes; do
       continue
     fi
 
-    if [ "${no_verify_gpg_signature:-0}" = 0 ] && ! verify_gpg_signature $changes_file $archive_file; then
+    if [ "${no_verify_gpg_signature:-0}" = 0 ] && ! verify_gpg_signature $changes_file; then
       queue_rejected "wrong-signature" $changes_file
       continue
     fi
 
-    signer=`fetch_field "Signed-By" < $archive_file`
+    signer=`fetch_field "Signed-By" < $changes_file`
 
-    if ! verify_dpkg_signature $archive_file; then
-      queue_rejected "wrong-dpkg-signature" $changes_file $archive_file "$signer"
+    if ! verify_dpkg_signature $changes_file; then
+      queue_rejected "wrong-dpkg-signature" $changes_file "$signer"
       continue
     fi
 
     # Move the .archive contents to unchecked
 
-    if archive_move secure "$archive_file" "$unchecked_dir"; then
-      log queue "mv_unchecked_success ${archive_file##*/}"
+    if archive_move secure "$changes_file" "$unchecked_dir"; then
+      log queue "mv_unchecked_success ${changes_file##*/}"
     else
-      log queue "mv_unchecked_failed ${archive_file##*/}"
+      log queue "mv_unchecked_failed ${changes_file##*/}"
       continue
     fi
 
     cd $unchecked_dir
 
-    if ! verify_md5sums $archive_file; then
-      queue_rejected "wrong-md5sums" $changes_file $archive_file "$signer"
+    if ! verify_md5sums $changes_file; then
+      queue_rejected "wrong-md5sums" $changes_file "$signer"
       continue
     fi
 
-    if [ "${no_verify_suite:-0}" = 0 ] && ! verify_suite $archive_file; then
-      queue_rejected "wrong-suite" $changes_file $archive_file "$signer"
+    if [ "${no_verify_suite:-0}" = 0 ] && ! verify_suite $changes_file; then
+      queue_rejected "wrong-suite" $changes_file "$signer"
       continue
     fi
 
-    if [ "${no_verify_arch:-0}" = 0 ] && ! verify_arch $archive_file; then
-      queue_rejected "wrong-arch" $changes_file $archive_file "$signer"
+    if [ "${no_verify_arch:-0}" = 0 ] && ! verify_arch $changes_file; then
+      queue_rejected "wrong-arch" $changes_file "$signer"
       continue
     fi
 
-    if [ "${no_verify_multiarch_changes:-0}" = 0 ] && ! verify_multiarch_changes $archive_file; then
-      queue_rejected "wrong-multiarch-changes" $changes_file $archive_file "$signer"
+    if [ "${no_verify_multiarch_changes:-0}" = 0 ] && ! verify_multiarch_changes $changes_file; then
+      queue_rejected "wrong-multiarch-changes" $changes_file "$signer"
       continue
     fi
 
-    queue_accepted $changes_file $archive_file "$signer"
+    queue_accepted $changes_file "$signer"
   fi
 done
 

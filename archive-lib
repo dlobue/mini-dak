@@ -279,10 +279,9 @@ archive_move ()
     fetch_files='fetch_secure_files'
     shift
   fi
-  local archive_file=$1
-  local changes_file=`basename $archive_file archive`changes
+  local changes_file=$1
   local dest_dir=$2
-  local files=`$fetch_files < $archive_file`
+  local files=`$fetch_files < $changes_file`
 
   mv -f $changes_file "$dest_dir" 2>/dev/null
 

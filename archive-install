@@ -29,21 +29,21 @@
 
 pool_install ()
 {
-  local archive_file=$1
-  local package=`fetch_source_name < $archive_file`
-  local arch=`fetch_single_arch < $archive_file`
+  local changes_file=$1
+  local package=`fetch_source_name < $changes_file`
+  local arch=`fetch_single_arch < $changes_file`
   local dest_dir=`poolize_arch_name $package $arch`
 
   if [ ! -d "$dest_dir" ]; then
     mkdir -p $dest_dir
   fi
 
-  if archive_move $archive_file $dest_dir; then
-    log install "install_success ${archive_file##*/}"
+  if archive_move $changes_file $dest_dir; then
+    log install "install_success ${changes_file##*/}"
     return 0
   else
     script_error "$?"
-    log install "install_failed ${archive_file##*/}"
+    log install "install_failed ${changes_file##*/}"
     return 1
   fi
 }
@@ -64,9 +64,9 @@ cd $accepted_dir
 
 shopt -s nullglob
 
-for archive_file in *.archive; do
-    pool_install "$archive_file"
-    rm $archive_file
+for changes_file in *.changes; do
+    pool_install "$changes_file"
+    #rm $changes_file
 
     INSTALLED=yes
 done
