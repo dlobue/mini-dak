@@ -28,7 +28,7 @@ create_apt_config ()
 	  Packages::Extensions	".deb";
 	  Packages::Compress	". gzip bzip2";
 	  Sources::Compress	". gzip bzip2";
-	  MaxContentsChange	25000;
+	  Contents::Compress	". gzip bzip2";
 	};
 
 	APT::FTPArchive::Release {
@@ -39,14 +39,17 @@ create_apt_config ()
 
 	Dir {
 	  ArchiveDir		"$archive_dir";
-	  OverrideDir		"$indices_dir";
 	  CacheDir		"$cache_dir";
-	  FileListDir		"$cache_dir";
+	  #FileListDir		"$cache_dir";
 	};
 
 	TreeDefault {
-	  Directory		"pool-\$(ARCH)/";
-	  SrcDirectory		"pool/";
+	  BinCacheDB "packages-\$(SECTION)-\$(ARCH).db";
+	  Directory "pool/\$(SECTION)";
+	  SrcDirectory "pool/\$(SECTION)";
+	  Packages "\$(DIST)/\$(SECTION)/binary-\$(ARCH)/Packages";
+	  Sources "\$(DIST)/\$(SECTION)/source/Sources";
+	  Contents "\$(DIST)/Contents-\$(ARCH)";
 	};
 	
 HERE
@@ -54,23 +57,9 @@ HERE
   for suite in $suite_list; do
     cat >> $apt_config <<-HERE
 	Tree "dists/$suite" {
-	  FileList		"files_${suite}_\$(ARCH).list";
+	  #FileList		"files_${suite}_\$(ARCH).list";
 	  Sections		"$(get_suite_sections $suite)";
 	  Architectures		"$(get_suite_arches $suite)";
-	  BinOverride		"override.$suite.\$(SECTION)";
-	  SrcOverride		"override.$suite.\$(SECTION).src";
-	  ExtraOverride		"override.$suite.extra.\$(SECTION)";
-	};
-
-	Tree "dists/$suite/main" {
-	  FileList		"files_${suite}_\$(ARCH).di.list";
-	  Sections		"debian-installer";
-	  Architectures		"$(get_suite_arches $suite)";
-	  BinOverride		"override.$suite.main.\$(SECTION)";
-	  SrcOverride		"override.$suite.main.src";
-	  BinCacheDB		"packages-\$(SECTION)-\$(ARCH).db";
-	  Packages::Extensions	".udeb";
-	  Contents		" ";
 	};
 
 HERE
@@ -90,7 +79,7 @@ create_repo ()
           path_dir=$dists_dir/$suite/$section/$arch
         else
           path_dir=$dists_dir/$suite/$section/binary-$arch
-          mkdir -p $dists_dir/$suite/$section/debian-installer/binary-$arch
+          #mkdir -p $dists_dir/$suite/$section/debian-installer/binary-$arch
         fi
         mkdir -p $path_dir
         cat > $path_dir/Release <<-HERE
