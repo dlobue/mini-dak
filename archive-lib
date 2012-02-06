@@ -127,9 +127,9 @@ get_pool_dir_arch ()
 
 get_suite_arches ()
 {
-  local suite=$(canonic_suite $1)
+  local suite="arch_list_$(canonic_suite $1)"
 
-  eval echo \$arch_list_$suite
+  echo ${!suite:-$arch_list}
 }
 
 get_suite_sections ()
