@@ -74,13 +74,13 @@ done
 cd - >/dev/null
 
 if [ "$INSTALLED" = "yes" ]; then
-  ./archive-lists
+  [ "${skip_override_lists:-0}" = 0 ]&& ./archive-lists
   ./archive-changes-lists
-  ./archive-obsolete
-  ./archive-mirror-arch-all
+  [ "${skip_obsolete:-0}" = 0 ]&& ./archive-obsolete
+  [ "${skip_mirror:-0}" = 0 ]&& ./archive-mirror-arch-all
   ./archive-reindex-files
   ./archive-reindex-meta
-  ./archive-mirror-push
-  ./archive-quinn
+  [ "${skip_mirror_push:-0}" = 0 ]&& ./archive-mirror-push
+  [ "${skip_quinn:-0}" = 0 ]&& ./archive-quinn
   ./archive-stats
 fi

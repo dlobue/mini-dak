@@ -270,7 +270,7 @@ for changes_file in *.changes; do
       continue
     fi
 
-    if ! verify_gpg_signature $changes_file $archive_file; then
+    if [ "${no_verify_gpg_signature:-0}" = 0 ] && ! verify_gpg_signature $changes_file $archive_file; then
       queue_rejected "wrong-signature" $changes_file
       continue
     fi
@@ -298,17 +298,17 @@ for changes_file in *.changes; do
       continue
     fi
 
-    if ! verify_suite $archive_file; then
+    if [ "${no_verify_suite:-0}" = 0 ] && ! verify_suite $archive_file; then
       queue_rejected "wrong-suite" $changes_file $archive_file "$signer"
       continue
     fi
 
-    if ! verify_arch $archive_file; then
+    if [ "${no_verify_arch:-0}" = 0 ] && ! verify_arch $archive_file; then
       queue_rejected "wrong-arch" $changes_file $archive_file "$signer"
       continue
     fi
 
-    if ! verify_multiarch_changes $archive_file; then
+    if [ "${no_verify_multiarch_changes:-0}" = 0 ] && ! verify_multiarch_changes $archive_file; then
       queue_rejected "wrong-multiarch-changes" $changes_file $archive_file "$signer"
       continue
     fi
