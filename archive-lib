@@ -82,7 +82,7 @@ fetch_single_arch ()
 filter_real_arches ()
 {
   local arches=$@
-  local real_arches=$(echo $arches | sed -re 's/(source|all) ?//g')
+  local real_arches=$(echo $arches | sed -re 's/(source) ?//g')
 
   echo $real_arches
 }
@@ -264,10 +264,22 @@ changes_strip ()
 {
   awk  '
 BEGIN { block = 0; contents = 0 }
-/^-----BEGIN PGP SIGNATURE/ { exit }
-block && contents { print }
+{ plain[NR] = $0 }
+/^-----BEGIN PGP SIGNATURE/ { block = 0; contents = 0; }
+block && contents { signed[NR] = $0 }
 /^-----BEGIN PGP SIGNED/ { block = 1 }
 block && /^ *$/ { contents = 1 }
+END {
+  for (k in plain)
+    data[k] = plain[k]
+  if (length(signed)) {
+    delete data
+    for (k in signed)
+      data[k] = signed[k]
+    }
+  for (i=1; i <= length(data); i++)
+    if (data[i]) print data[i]
+}
 '
 }
 
