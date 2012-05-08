@@ -28,7 +28,7 @@
 echo_time "-> Collecting .changes files lists..."
 for arch in $(get_archive_arches); do
   echo_time " -> Collecting .changes files list... [$arch]"
-  find $(get_pool_dir_arch $arch) -name '*.changes' | changes_canonic | \
+  find $(get_pool_dir_arch $arch) -name "*_all.changes" -or -name "*_${arch}.changes" | changes_canonic | \
     sort > $cache_dir/changes_$arch.list
 done
 
