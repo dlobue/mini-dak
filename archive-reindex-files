@@ -28,10 +28,7 @@
 echo_time "-> Regenerating file lists..."
 for arch in $(get_archive_arches); do
   echo_time " -> Regenerating file list.. [$arch]"
-  test -e "$cache_dir/changes_$arch.list" || echo "-----------CHANGES LIST DOES'T EXIST---------" >2
-  test -z "`cat $cache_dir/changes_$arch.list`" || echo "-----------CHANGES LIST EMPTY---------" >2
   cat $cache_dir/changes_$arch.list | while read package suite arch version path; do
-    echo_time " --> path is: $path"
     archive_file=`changes_strip < $path`
     basepath=`dirname $path`
     basedir=${basepath#$archive_dir/}
